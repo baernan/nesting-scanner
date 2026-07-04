@@ -675,8 +675,17 @@
     function tick() {
       if (video.readyState === video.HAVE_ENOUGH_DATA && isScanning) {
         canvas.hidden = false;
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
+        let scanWidth = video.videoWidth;
+        let scanHeight = video.videoHeight;
+        const maxScanDim = 640;
+        if (scanWidth > maxScanDim || scanHeight > maxScanDim) {
+          const ratio = Math.min(maxScanDim / scanWidth, maxScanDim / scanHeight);
+          scanWidth = Math.round(scanWidth * ratio);
+          scanHeight = Math.round(scanHeight * ratio);
+        }
+        
+        canvas.width = scanWidth;
+        canvas.height = scanHeight;
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
