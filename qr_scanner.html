@@ -91,7 +91,8 @@
     #video {
       width: 100%;
       height: 100%;
-      object-fit: cover;
+      object-fit: contain;
+      background: #000000;
     }
 
     #canvas {
@@ -773,6 +774,12 @@
       localStorage.setItem('labelScanHistory', JSON.stringify(scanHistory));
       renderHistory();
     }
+
+    // Automatically match container aspect ratio to camera feed
+    video.onloadedmetadata = () => {
+      const container = document.querySelector('.scanner-container');
+      container.style.aspectRatio = `${video.videoWidth} / ${video.videoHeight}`;
+    };
 
     // Start on page load
     window.addEventListener('load', () => startCamera());
