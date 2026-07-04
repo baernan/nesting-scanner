@@ -688,13 +688,10 @@
     function handleScanSuccess(rawText) {
       const now = Date.now();
       
-      // Throttle scans of identical text by 3.5 seconds to avoid spamming scans
-      if (rawText === lastScannedText && (now - lastScanTime < 3500)) {
+      // Completely ignore duplicate scans of the currently displayed label
+      if (rawText === lastScannedText) {
         return;
       }
-
-      lastScannedText = rawText;
-      lastScanTime = now;
 
       // Check format: Part: ... \n Sheet: ... \n Dimensions: ...
       const lines = rawText.split('\n');
@@ -718,10 +715,13 @@
         }
       });
 
+      // Ignore non-nesting QR codes completely (keeps the current valid scan active on screen)
       if (!parsedCorrectly) {
-        // Fallback for raw unscoped text scan
-        part = rawText.substring(0, 40) + (rawText.length > 40 ? "..." : "");
+        return;
       }
+
+      lastScannedText = rawText;
+      lastScanTime = now;
 
       // Feedback
       playBeep();
