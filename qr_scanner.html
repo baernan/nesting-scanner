@@ -755,8 +755,12 @@
         scanCard.style.boxShadow = "0 4px 20px rgba(0, 0, 0, 0.3)";
       }, 1000);
 
-      // Log to history
+      // Log to history (filtering out any previous duplicate so it moves to the top)
       const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      scanHistory = scanHistory.filter(item => 
+        !(item.job === job && item.part === part && item.sheet === sheet)
+      );
+      
       scanHistory.unshift({
         job: job,
         part: part,
