@@ -454,6 +454,11 @@
       </div>
 
       <div class="data-row">
+        <div class="data-label">Job / File Name</div>
+        <div class="data-value" id="jobName" style="font-size: 1.1rem; font-weight: 600; color: var(--accent-glow);">---</div>
+      </div>
+
+      <div class="data-row">
         <div class="data-label">Part Name</div>
         <div class="data-value part-name" id="partName">---</div>
       </div>
@@ -542,6 +547,7 @@
     // UI elements for card
     const scanCard = document.getElementById('scanCard');
     const scanBadge = document.getElementById('scanBadge');
+    const jobNameVal = document.getElementById('jobName');
     const partNameVal = document.getElementById('partName');
     const sheetIdVal = document.getElementById('sheetId');
     const dimsMetricVal = document.getElementById('dimsMetric');
@@ -569,7 +575,7 @@
         div.innerHTML = `
           <div class="history-item-info">
             <span class="history-item-name">${item.part}</span>
-            <span class="history-item-meta">Sheet: ${item.sheet} • ${item.metric || item.imperial || ''}</span>
+            <span class="history-item-meta">Job: ${item.job || '---'} • Sheet: ${item.sheet} • ${item.metric || item.imperial || ''}</span>
           </div>
           <span class="history-item-time">${item.time}</span>
         `;
@@ -693,8 +699,9 @@
         return;
       }
 
-      // Check format: Part: ... \n Sheet: ... \n Dimensions: ...
+      // Check format: Job: ... \n Part: ... \n Sheet: ... \n Dimensions: ...
       const lines = rawText.split('\n');
+      let job = "Unknown Job";
       let part = "Unknown Part";
       let sheet = "Unknown Sheet";
       let metric = "---";
@@ -702,12 +709,14 @@
       let parsedCorrectly = false;
 
       lines.forEach(line => {
-        if (line.startsWith("Part: ")) {
+        if (line.startsWith("Job: ")) {
+          job = line.replace("Job: ", "").trim();
+        } else if (line.startsWith("Part: ")) {
           part = line.replace("Part: ", "").trim();
           parsedCorrectly = true;
         } else if (line.startsWith("Sheet: ")) {
           sheet = line.replace("Sheet: ", "").trim();
-        } else if (line.startsWith("Dimensions: ") || line.startsWith("Dims: ")) {
+        } else if (line.startsWith("Dimensions: ") || line.startsWith("Dims: ") || line.startsWith("Dimensions: ")) {
           const dims = line.replace("Dimensions: ", "").replace("Dims: ", "").trim();
           const split = dims.split('|');
           if (split[0]) metric = split[0].trim();
@@ -733,6 +742,7 @@
       scanBadge.style.backgroundColor = "rgba(16, 185, 129, 0.15)";
       scanBadge.style.borderColor = "rgba(16, 185, 129, 0.3)";
       
+      jobNameVal.innerText = job;
       partNameVal.innerText = part;
       sheetIdVal.innerText = sheet;
       dimsMetricVal.innerText = metric;
@@ -748,6 +758,7 @@
       // Log to history
       const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       scanHistory.unshift({
+        job: job,
         part: part,
         sheet: sheet,
         metric: metric === "---" ? "" : metric,
