@@ -48,24 +48,23 @@
       width: 100%;
       max-width: 480px;
       text-align: center;
-      margin-bottom: 0.5rem;
-      padding: 0.25rem 0;
+      margin-bottom: 0.25rem;
+      padding: 0.15rem 0;
     }
 
     header h1 {
       font-family: 'Outfit', sans-serif;
-      font-size: 1.35rem;
+      font-size: 1.2rem;
       font-weight: 800;
       letter-spacing: -0.025em;
       background: linear-gradient(to right, #60a5fa, #34d399);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
-      margin-bottom: 0.15rem;
+      margin-bottom: 0rem;
     }
 
     header p {
-      font-size: 0.875rem;
-      color: var(--text-muted);
+      display: none;
     }
 
     main {
@@ -289,39 +288,6 @@
       padding: 1.25rem;
     }
 
-    .history-toggle-wrapper {
-      display: flex;
-      justify-content: center;
-      margin-top: 0.1rem;
-      margin-bottom: 0.1rem;
-    }
-
-    .history-toggle-btn {
-      background: rgba(15, 23, 42, 0.45);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      color: var(--text-muted);
-      padding: 0.45rem 1rem;
-      border-radius: 2rem;
-      font-size: 0.75rem;
-      font-weight: 600;
-      display: inline-flex;
-      align-items: center;
-      cursor: pointer;
-      transition: all 0.2s;
-      outline: none;
-    }
-
-    .history-toggle-btn:hover {
-      background: rgba(15, 23, 42, 0.8);
-      color: var(--text-main);
-      border-color: rgba(255, 255, 255, 0.15);
-      transform: translateY(-1px);
-    }
-
-    .history-toggle-btn:active {
-      transform: translateY(0);
-    }
-
     .history-header {
       display: flex;
       justify-content: space-between;
@@ -356,8 +322,6 @@
       display: flex;
       flex-direction: column;
       gap: 0.5rem;
-      max-height: 200px;
-      overflow-y: auto;
     }
 
     .history-item {
@@ -544,16 +508,8 @@
 
 
 
-    <!-- History Toggle Button -->
-    <div class="history-toggle-wrapper">
-      <button class="history-toggle-btn" id="toggleHistoryBtn">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right: 6px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-        <span>Show Scan History (0)</span>
-      </button>
-    </div>
-
     <!-- Scan History Log -->
-    <div class="history-container" id="historyContainer" style="display: none;">
+    <div class="history-container">
       <div class="history-header">
         <span class="history-title">Recent Scans</span>
         <button class="clear-btn" id="clearHistoryBtn">Clear Log</button>
@@ -619,9 +575,6 @@
     const dimsImperialVal = document.getElementById('dimsImperial');
     const historyList = document.getElementById('historyList');
     const clearHistoryBtn = document.getElementById('clearHistoryBtn');
-    const historyContainer = document.getElementById('historyContainer');
-    const toggleHistoryBtn = document.getElementById('toggleHistoryBtn');
-    let showHistory = false;
 
     let stream = null;
     let isScanning = true;
@@ -637,15 +590,6 @@
     // Render historical list
     function renderHistory() {
       historyList.innerHTML = '';
-      
-      // Update toggle button count
-      const count = scanHistory.length;
-      if (toggleHistoryBtn) {
-        const btnText = toggleHistoryBtn.querySelector('span');
-        if (btnText) {
-          btnText.innerText = showHistory ? 'Hide Scan History' : `Show Scan History (${count})`;
-        }
-      }
 
       if (scanHistory.length === 0) {
         historyList.innerHTML = `<div class="history-item" style="justify-content: center; color: var(--text-muted); font-size: 0.75rem;">No parts scanned yet.</div>`;
@@ -670,19 +614,6 @@
       scanHistory = [];
       localStorage.setItem('labelScanHistory', '[]');
       renderHistory();
-    };
-
-    toggleHistoryBtn.onclick = () => {
-      showHistory = !showHistory;
-      historyContainer.style.display = showHistory ? 'block' : 'none';
-      
-      const count = scanHistory.length;
-      const btnText = toggleHistoryBtn.querySelector('span');
-      if (btnText) {
-        btnText.innerText = showHistory ? 'Hide Scan History' : `Show Scan History (${count})`;
-      }
-      
-      sizeAdjusted = false;
     };
 
     // Load initial history
@@ -794,21 +725,17 @@
       
       // Get height of header
       const header = document.querySelector('header');
-      const headerH = header ? header.offsetHeight : 50;
+      const headerH = header ? header.offsetHeight : 45;
       
       // Get height of scan card
       const card = document.getElementById('scanCard');
       const cardH = card ? card.offsetHeight : 160;
       
-      // Get height of history container
-      const history = document.querySelector('.history-container');
-      const historyH = history ? history.offsetHeight : 180;
+      // We want the scanner maximized to fill the initial screen,
+      // and let the history flow below to be viewed via natural page scrolling.
+      const nonScannerHeight = headerH + cardH + 32;
       
-      // Account for body padding and gaps (approx 60px)
-      const nonScannerHeight = headerH + cardH + historyH + 60;
-      
-      // The remaining height is what we can allocate for the scanner
-      const availH = Math.max(windowH - nonScannerHeight, 140);
+      const availH = Math.max(windowH - nonScannerHeight, 160);
       const availW = Math.max(windowW - 32, 200); // 16px padding on sides
       
       const cameraAspect = video.videoWidth / video.videoHeight;
@@ -982,4 +909,4 @@
   </script>
 </body>
 </html>
-<!-- Trigger rebuild: 15 -->
+<!-- Trigger rebuild: 16 -->
