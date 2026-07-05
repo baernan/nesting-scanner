@@ -479,8 +479,13 @@
       </div>
 
       <div class="data-row">
-        <div class="data-label">Job / File Name</div>
+        <div class="data-label">Job Name</div>
         <div class="data-value" id="jobName" style="font-size: 1.1rem; font-weight: 600; color: var(--accent-glow);">---</div>
+      </div>
+
+      <div class="data-row">
+        <div class="data-label">DXF File Name</div>
+        <div class="data-value" id="fileName" style="font-weight: 500;">---</div>
       </div>
 
       <div class="data-row">
@@ -568,6 +573,7 @@
     const scanCard = document.getElementById('scanCard');
     const scanBadge = document.getElementById('scanBadge');
     const jobNameVal = document.getElementById('jobName');
+    const fileNameVal = document.getElementById('fileName');
     const partNameVal = document.getElementById('partName');
     const sheetIdVal = document.getElementById('sheetId');
     const dimsMetricVal = document.getElementById('dimsMetric');
@@ -601,7 +607,7 @@
         div.innerHTML = `
           <div class="history-item-info">
             <span class="history-item-name">${item.part}</span>
-            <span class="history-item-meta">Job: ${item.job || '---'} • Sheet: ${item.sheet} • ${[item.metric, item.imperial].filter(Boolean).join(' | ')}</span>
+            <span class="history-item-meta">Job: ${item.job || '---'} • File: ${item.file || '---'} • Sheet: ${item.sheet} • ${[item.metric, item.imperial].filter(Boolean).join(' | ')}</span>
           </div>
           <span class="history-item-time">${item.time}</span>
         `;
@@ -828,9 +834,10 @@
         return;
       }
 
-      // Check format: Job: ... \n Part: ... \n Sheet: ... \n Dimensions: ...
+      // Check format: Job: ... \n File: ... \n Part: ... \n Sheet: ... \n Dimensions: ...
       const lines = rawText.split('\n');
       let job = "Unknown Job";
+      let file = "Unknown File";
       let part = "Unknown Part";
       let sheet = "Unknown Sheet";
       let metric = "---";
@@ -840,6 +847,8 @@
       lines.forEach(line => {
         if (line.startsWith("Job: ")) {
           job = line.replace("Job: ", "").trim();
+        } else if (line.startsWith("File: ")) {
+          file = line.replace("File: ", "").trim();
         } else if (line.startsWith("Part: ")) {
           part = line.replace("Part: ", "").trim();
           parsedCorrectly = true;
@@ -872,6 +881,7 @@
       scanBadge.style.borderColor = "rgba(16, 185, 129, 0.3)";
       
       jobNameVal.innerText = job;
+      fileNameVal.innerText = file;
       partNameVal.innerText = part;
       sheetIdVal.innerText = sheet;
       dimsMetricVal.innerText = metric;
@@ -887,11 +897,12 @@
       // Log to history (filtering out any previous duplicate so it moves to the top)
       const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       scanHistory = scanHistory.filter(item => 
-        !(item.job === job && item.part === part && item.sheet === sheet)
+        !(item.job === job && item.file === file && item.part === part && item.sheet === sheet)
       );
       
       scanHistory.unshift({
         job: job,
+        file: file,
         part: part,
         sheet: sheet,
         metric: metric === "---" ? "" : metric,
@@ -908,4 +919,4 @@
   </script>
 </body>
 </html>
-<!-- Trigger rebuild: 16 -->
+<!-- Trigger rebuild: 17 -->
