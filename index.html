@@ -568,7 +568,7 @@
         div.innerHTML = `
           <div class="history-item-info">
             <span class="history-item-name">${item.part}</span>
-            <span class="history-item-meta">Job: ${item.job || '---'} • Sheet: ${item.sheet} • ${item.metric || item.imperial || ''}</span>
+            <span class="history-item-meta">Job: ${item.job || '---'} • Sheet: ${item.sheet} • ${[item.metric, item.imperial].filter(Boolean).join(' | ')}</span>
           </div>
           <span class="history-item-time">${item.time}</span>
         `;
@@ -659,6 +659,23 @@
       startCamera(cameraSelect.value);
     };
 
+    // Helper to draw alignment overlay lines on successful scan
+    function drawLine(begin, end, color) {
+      ctx.beginPath();
+      ctx.moveTo(begin.x, begin.y);
+      ctx.lineTo(end.x, end.y);
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = color;
+      ctx.stroke();
+    }
+
+    function drawRect(location, color) {
+      drawLine(location.topLeftCorner, location.topRightCorner, color);
+      drawLine(location.topRightCorner, location.bottomRightCorner, color);
+      drawLine(location.bottomRightCorner, location.bottomLeftCorner, color);
+      drawLine(location.bottomLeftCorner, location.topLeftCorner, color);
+    }
+
     // Main scan frame loop
     function tick() {
       if (video.readyState === video.HAVE_ENOUGH_DATA && isScanning) {
@@ -682,6 +699,8 @@
         });
 
         if (code) {
+          // Draw green tracking marker around detected QR code
+          drawRect(code.location, "#10b981");
           handleScanSuccess(code.data);
         }
       }
@@ -777,4 +796,4 @@
   </script>
 </body>
 </html>
-<!-- Trigger rebuild: 4 -->
+<!-- Trigger rebuild: 5 -->
