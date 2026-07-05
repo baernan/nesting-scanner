@@ -87,6 +87,7 @@
       overflow: hidden;
       border: 1px solid var(--border-glow);
       box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.7), 0 0 15px rgba(59, 130, 246, 0.15);
+      transition: width 0.3s ease;
     }
 
     #video {
@@ -718,8 +719,15 @@
     }
 
     function adjustScannerSize() {
-      // Scale resolution of overlay drawing canvas to match fixed physical display box (240x160)
-      canvas.width = 240;
+      if (!video.videoWidth || !video.videoHeight) return;
+      const container = document.getElementById('scannerContainer');
+      const cameraAspect = video.videoWidth / video.videoHeight;
+      const targetWidth = Math.round(160 * cameraAspect);
+      
+      container.style.width = targetWidth + "px";
+      
+      // Scale resolution of overlay drawing canvas to match physical display box
+      canvas.width = targetWidth;
       canvas.height = 160;
       sizeAdjusted = true;
     }
@@ -760,27 +768,14 @@
           });
 
           if (code) {
-            // Map coordinates from the downscaled scan space to the overlay canvas space under object-fit: cover scaling
-            const destW = canvas.width;
-            const destH = canvas.height;
-            const s = Math.max(destW / scanWidth, destH / scanHeight);
-            const scaledW = scanWidth * s;
-            const scaledH = scanHeight * s;
-            const offsetX = (destW - scaledW) / 2;
-            const offsetY = (destH - scaledH) / 2;
-
-            const mapPoint = (p) => {
-              return {
-                x: p.x * s + offsetX,
-                y: p.y * s + offsetY
-              };
-            };
-
+            // Map coordinates from the downscaled scan space to the overlay canvas space
+            const scaleX = canvas.width / scanWidth;
+            const scaleY = canvas.height / scanHeight;
             const mappedLoc = {
-              topLeftCorner: mapPoint(code.location.topLeftCorner),
-              topRightCorner: mapPoint(code.location.topRightCorner),
-              bottomRightCorner: mapPoint(code.location.bottomRightCorner),
-              bottomLeftCorner: mapPoint(code.location.bottomLeftCorner)
+              topLeftCorner: { x: code.location.topLeftCorner.x * scaleX, y: code.location.topLeftCorner.y * scaleY },
+              topRightCorner: { x: code.location.topRightCorner.x * scaleX, y: code.location.topRightCorner.y * scaleY },
+              bottomRightCorner: { x: code.location.bottomRightCorner.x * scaleX, y: code.location.bottomRightCorner.y * scaleY },
+              bottomLeftCorner: { x: code.location.bottomLeftCorner.x * scaleX, y: code.location.bottomLeftCorner.y * scaleY }
             };
 
             // Draw active tracking marker
@@ -883,4 +878,4 @@
   </script>
 </body>
 </html>
-<!-- Trigger rebuild: 12 -->
+<!-- Trigger rebuild: 13 -->
