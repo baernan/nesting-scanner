@@ -79,7 +79,7 @@
     .scanner-container {
       position: relative;
       width: 240px;
-      height: 180px;
+      height: 160px;
       margin: 0 auto;
       flex-shrink: 0;
       background: #020617;
@@ -87,7 +87,6 @@
       overflow: hidden;
       border: 1px solid var(--border-glow);
       box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.7), 0 0 15px rgba(59, 130, 246, 0.15);
-      transition: height 0.3s ease;
     }
 
     #video {
@@ -694,17 +693,9 @@
     }
 
     function adjustScannerSize() {
-      if (!video.videoWidth || !video.videoHeight) return;
-      const container = document.getElementById('scannerContainer');
-      const aspect = video.videoHeight / video.videoWidth; // height/width ratio
-      
-      // Calculate dynamic height for 240px wide layout
-      const targetHeight = Math.round(240 * aspect);
-      container.style.height = targetHeight + "px";
-      
-      // Scale resolution of overlay drawing canvas to match physical display box
+      // Scale resolution of overlay drawing canvas to match fixed physical display box (240x160)
       canvas.width = 240;
-      canvas.height = targetHeight;
+      canvas.height = 160;
       sizeAdjusted = true;
     }
 
@@ -744,13 +735,27 @@
           });
 
           if (code) {
-            // Scale offscreen scan coordinates back to physical layout overlay canvas
-            const scale = canvas.width / scanWidth;
+            // Map coordinates from the downscaled scan space to the overlay canvas space under object-fit: cover scaling
+            const destW = canvas.width;
+            const destH = canvas.height;
+            const s = Math.max(destW / scanWidth, destH / scanHeight);
+            const scaledW = scanWidth * s;
+            const scaledH = scanHeight * s;
+            const offsetX = (destW - scaledW) / 2;
+            const offsetY = (destH - scaledH) / 2;
+
+            const mapPoint = (p) => {
+              return {
+                x: p.x * s + offsetX,
+                y: p.y * s + offsetY
+              };
+            };
+
             const mappedLoc = {
-              topLeftCorner: { x: code.location.topLeftCorner.x * scale, y: code.location.topLeftCorner.y * scale },
-              topRightCorner: { x: code.location.topRightCorner.x * scale, y: code.location.topRightCorner.y * scale },
-              bottomRightCorner: { x: code.location.bottomRightCorner.x * scale, y: code.location.bottomRightCorner.y * scale },
-              bottomLeftCorner: { x: code.location.bottomLeftCorner.x * scale, y: code.location.bottomLeftCorner.y * scale }
+              topLeftCorner: mapPoint(code.location.topLeftCorner),
+              topRightCorner: mapPoint(code.location.topRightCorner),
+              bottomRightCorner: mapPoint(code.location.bottomRightCorner),
+              bottomLeftCorner: mapPoint(code.location.bottomLeftCorner)
             };
 
             // Draw active tracking marker
@@ -853,4 +858,4 @@
   </script>
 </body>
 </html>
-<!-- Trigger rebuild: 9 -->
+<!-- Trigger rebuild: 10 -->
