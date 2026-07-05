@@ -421,11 +421,12 @@
 
   <main>
     <!-- Camera Viewport -->
-    <div class="scanner-container">
+    <div class="scanner-container" id="scannerContainer">
       <video id="video" autoplay muted playsinline></video>
-      <canvas id="canvas" hidden></canvas>
-      <div class="reticle"></div>
-      <div class="scan-line"></div>
+      <canvas id="canvas" style="pointer-events: none; z-index: 2;"></canvas>
+      <canvas id="scanCanvas" hidden></canvas>
+      <div class="reticle" style="z-index: 3;"></div>
+      <div class="scan-line" style="z-index: 4;"></div>
       
       <!-- Pause overlay button in upper left -->
       <button class="pause-btn-overlay" id="toggleScanBtn" title="Pause Scanner">
@@ -557,8 +558,8 @@
     let scanHistory = JSON.parse(localStorage.getItem('labelScanHistory') || '[]');
     let sizeAdjusted = false;
 
-    // Create offscreen canvas for barcode data extraction (prevents UI lag/distortion)
-    const scanCanvas = document.createElement('canvas');
+    // Retrieve DOM-bound scan canvas (important for iOS Safari buffer persistence)
+    const scanCanvas = document.getElementById('scanCanvas');
     const scanCtx = scanCanvas.getContext('2d');
 
     // Render historical list
@@ -701,47 +702,56 @@
 
     // Main scan frame loop
     function tick() {
-      if (video.readyState === video.HAVE_ENOUGH_DATA && isScanning) {
-        if (!sizeAdjusted) {
-          adjustScannerSize();
+      try {
+        if (video.readyState === video.HAVE_ENOUGH_DATA && isScanning) {
+          if (!sizeAdjusted) {
+            adjustScannerSize();
+          }
+
+          let scanWidth = video.videoWidth;
+          let scanHeight = video.videoHeight;
+          if (scanWidth <= 0 || scanHeight <= 0) {
+            requestAnimationFrame(tick);
+            return;
+          }
+
+          // Clear the visible green overlay box
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+          // Standardize downscaled dimensions for background CPU decoding
+          const maxScanDim = 320;
+          if (scanWidth > maxScanDim || scanHeight > maxScanDim) {
+            const ratio = Math.min(maxScanDim / scanWidth, maxScanDim / scanHeight);
+            scanWidth = Math.round(scanWidth * ratio);
+            scanHeight = Math.round(scanHeight * ratio);
+          }
+          
+          scanCanvas.width = scanWidth;
+          scanCanvas.height = scanHeight;
+          scanCtx.drawImage(video, 0, 0, scanCanvas.width, scanCanvas.height);
+          
+          const imageData = scanCtx.getImageData(0, 0, scanCanvas.width, scanCanvas.height);
+          const code = jsQR(imageData.data, imageData.width, imageData.height, {
+            inversionAttempts: "dontInvert",
+          });
+
+          if (code) {
+            // Scale offscreen scan coordinates back to physical layout overlay canvas
+            const scale = canvas.width / scanWidth;
+            const mappedLoc = {
+              topLeftCorner: { x: code.location.topLeftCorner.x * scale, y: code.location.topLeftCorner.y * scale },
+              topRightCorner: { x: code.location.topRightCorner.x * scale, y: code.location.topRightCorner.y * scale },
+              bottomRightCorner: { x: code.location.bottomRightCorner.x * scale, y: code.location.bottomRightCorner.y * scale },
+              bottomLeftCorner: { x: code.location.bottomLeftCorner.x * scale, y: code.location.bottomLeftCorner.y * scale }
+            };
+
+            // Draw active tracking marker
+            drawRect(mappedLoc, "#10b981");
+            handleScanSuccess(code.data);
+          }
         }
-
-        // Clear the visible green overlay box
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        // Standardize downscaled dimensions for background CPU decoding
-        let scanWidth = video.videoWidth;
-        let scanHeight = video.videoHeight;
-        const maxScanDim = 320;
-        if (scanWidth > maxScanDim || scanHeight > maxScanDim) {
-          const ratio = Math.min(maxScanDim / scanWidth, maxScanDim / scanHeight);
-          scanWidth = Math.round(scanWidth * ratio);
-          scanHeight = Math.round(scanHeight * ratio);
-        }
-        
-        scanCanvas.width = scanWidth;
-        scanCanvas.height = scanHeight;
-        scanCtx.drawImage(video, 0, 0, scanCanvas.width, scanCanvas.height);
-        
-        const imageData = scanCtx.getImageData(0, 0, scanCanvas.width, scanCanvas.height);
-        const code = jsQR(imageData.data, imageData.width, imageData.height, {
-          inversionAttempts: "dontInvert",
-        });
-
-        if (code) {
-          // Scale offscreen scan coordinates back to physical layout overlay canvas
-          const scale = canvas.width / scanWidth;
-          const mappedLoc = {
-            topLeftCorner: { x: code.location.topLeftCorner.x * scale, y: code.location.topLeftCorner.y * scale },
-            topRightCorner: { x: code.location.topRightCorner.x * scale, y: code.location.topRightCorner.y * scale },
-            bottomRightCorner: { x: code.location.bottomRightCorner.x * scale, y: code.location.bottomRightCorner.y * scale },
-            bottomLeftCorner: { x: code.location.bottomLeftCorner.x * scale, y: code.location.bottomLeftCorner.y * scale }
-          };
-
-          // Draw active tracking marker
-          drawRect(mappedLoc, "#10b981");
-          handleScanSuccess(code.data);
-        }
+      } catch (err) {
+        console.error("Scanner tick error:", err);
       }
       requestAnimationFrame(tick);
     }
@@ -835,4 +845,4 @@
   </script>
 </body>
 </html>
-<!-- Trigger rebuild: 6 -->
+<!-- Trigger rebuild: 7 -->
