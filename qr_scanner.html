@@ -380,7 +380,27 @@
       outline: none;
     }
 
-    .pause-btn-overlay:hover {
+    .switch-camera-btn-overlay {
+      position: absolute;
+      top: 0.75rem;
+      right: 0.75rem;
+      z-index: 10;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      outline: none;
+    }
+
+    .pause-btn-overlay:hover, .switch-camera-btn-overlay:hover {
       background: rgba(15, 23, 42, 0.85);
       border-color: var(--accent-glow);
       transform: scale(1.05);
@@ -439,17 +459,16 @@
       <button class="pause-btn-overlay" id="toggleScanBtn" title="Pause Scanner">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
       </button>
+
+      <!-- Switch Camera overlay button in upper right -->
+      <button class="switch-camera-btn-overlay" id="switchCameraBtn" title="Switch Camera" style="display: none;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+      </button>
       
       <div class="status-overlay" id="statusBox">
         <div class="pulse-dot"></div>
         <span id="statusText">Awaiting Camera Access...</span>
       </div>
-    </div>
-
-    <!-- Camera Source Selection -->
-    <div class="camera-select-container" id="cameraSelectDiv" style="display: none;">
-      <label class="data-label" for="cameraSelect">Video Source</label>
-      <select id="cameraSelect"></select>
     </div>
 
     <!-- Scanned Part Card -->
@@ -544,8 +563,9 @@
     const statusText = document.getElementById('statusText');
     const statusBox = document.getElementById('statusBox');
     const toggleScanBtn = document.getElementById('toggleScanBtn');
-    const cameraSelect = document.getElementById('cameraSelect');
-    const cameraSelectDiv = document.getElementById('cameraSelectDiv');
+    const switchCameraBtn = document.getElementById('switchCameraBtn');
+    let videoDevices = [];
+    let currentDeviceIndex = 0;
     
     // UI elements for card
     const scanCard = document.getElementById('scanCard');
@@ -644,22 +664,23 @@
         
         // List camera devices
         const devices = await navigator.mediaDevices.enumerateDevices();
-        const videoDevices = devices.filter(d => d.kind === 'videoinput');
+        videoDevices = devices.filter(d => d.kind === 'videoinput');
         
         if (videoDevices.length > 1) {
-          cameraSelect.innerHTML = '';
-          videoDevices.forEach(device => {
-            const opt = document.createElement('option');
-            opt.value = device.deviceId;
-            opt.text = device.label || `Camera ${cameraSelect.length + 1}`;
-            if (deviceId && device.deviceId === deviceId) {
-              opt.selected = true;
-            } else if (!deviceId && device.label.toLowerCase().includes('back')) {
-              opt.selected = true;
+          switchCameraBtn.style.display = 'flex';
+          // Find the active device index to keep track
+          if (stream) {
+            const activeTrack = stream.getVideoTracks()[0];
+            if (activeTrack) {
+              const activeId = activeTrack.getSettings().deviceId;
+              const idx = videoDevices.findIndex(d => d.deviceId === activeId);
+              if (idx !== -1) {
+                currentDeviceIndex = idx;
+              }
             }
-            cameraSelect.appendChild(opt);
-          });
-          cameraSelectDiv.style.display = 'flex';
+          }
+        } else {
+          switchCameraBtn.style.display = 'none';
         }
         
         requestAnimationFrame(tick);
@@ -670,9 +691,13 @@
       }
     }
 
-    cameraSelect.onchange = () => {
-      sizeAdjusted = false;
-      startCamera(cameraSelect.value);
+    switchCameraBtn.onclick = () => {
+      if (videoDevices.length > 1) {
+        currentDeviceIndex = (currentDeviceIndex + 1) % videoDevices.length;
+        const nextDevice = videoDevices[currentDeviceIndex];
+        sizeAdjusted = false;
+        startCamera(nextDevice.deviceId);
+      }
     };
 
     // Helper to draw alignment overlay lines on successful scan
@@ -858,4 +883,4 @@
   </script>
 </body>
 </html>
-<!-- Trigger rebuild: 11 -->
+<!-- Trigger rebuild: 12 -->
