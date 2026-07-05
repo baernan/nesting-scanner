@@ -87,7 +87,7 @@
       overflow: hidden;
       border: 1px solid var(--border-glow);
       box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.7), 0 0 15px rgba(59, 130, 246, 0.15);
-      transition: width 0.3s ease;
+      transition: width 0.3s ease, height 0.3s ease;
     }
 
     #video {
@@ -721,16 +721,53 @@
     function adjustScannerSize() {
       if (!video.videoWidth || !video.videoHeight) return;
       const container = document.getElementById('scannerContainer');
-      const cameraAspect = video.videoWidth / video.videoHeight;
-      const targetWidth = Math.round(160 * cameraAspect);
       
-      container.style.width = targetWidth + "px";
+      const windowH = window.innerHeight;
+      const windowW = window.innerWidth;
+      
+      // Get height of header
+      const header = document.querySelector('header');
+      const headerH = header ? header.offsetHeight : 50;
+      
+      // Get height of scan card
+      const card = document.getElementById('scanCard');
+      const cardH = card ? card.offsetHeight : 160;
+      
+      // Get height of history container
+      const history = document.querySelector('.history-container');
+      const historyH = history ? history.offsetHeight : 180;
+      
+      // Account for body padding and gaps (approx 60px)
+      const nonScannerHeight = headerH + cardH + historyH + 60;
+      
+      // The remaining height is what we can allocate for the scanner
+      const availH = Math.max(windowH - nonScannerHeight, 140);
+      const availW = Math.max(windowW - 32, 200); // 16px padding on sides
+      
+      const cameraAspect = video.videoWidth / video.videoHeight;
+      
+      let targetW, targetH;
+      // Fit scanner aspect ratio into availW and availH
+      if (availW / cameraAspect <= availH) {
+        targetW = availW;
+        targetH = Math.round(availW / cameraAspect);
+      } else {
+        targetH = availH;
+        targetW = Math.round(availH * cameraAspect);
+      }
+      
+      container.style.width = targetW + "px";
+      container.style.height = targetH + "px";
       
       // Scale resolution of overlay drawing canvas to match physical display box
-      canvas.width = targetWidth;
-      canvas.height = 160;
+      canvas.width = targetW;
+      canvas.height = targetH;
       sizeAdjusted = true;
     }
+
+    window.addEventListener('resize', () => {
+      sizeAdjusted = false;
+    });
 
     // Main scan frame loop
     function tick() {
@@ -878,4 +915,4 @@
   </script>
 </body>
 </html>
-<!-- Trigger rebuild: 13 -->
+<!-- Trigger rebuild: 14 -->
