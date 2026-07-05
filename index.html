@@ -111,6 +111,14 @@
       pointer-events: none;
     }
 
+    .offscreen-scan-canvas {
+      position: absolute;
+      top: -9999px;
+      left: -9999px;
+      opacity: 0;
+      pointer-events: none;
+    }
+
     /* Target Reticle overlay */
     .reticle {
       position: absolute;
@@ -424,7 +432,7 @@
     <div class="scanner-container" id="scannerContainer">
       <video id="video" autoplay muted playsinline></video>
       <canvas id="canvas" style="pointer-events: none; z-index: 2;"></canvas>
-      <canvas id="scanCanvas" hidden></canvas>
+      <canvas id="scanCanvas" class="offscreen-scan-canvas"></canvas>
       <div class="reticle" style="z-index: 3;"></div>
       <div class="scan-line" style="z-index: 4;"></div>
       
@@ -845,4 +853,4 @@
   </script>
 </body>
 </html>
-<!-- Trigger rebuild: 7 -->
+<!-- Trigger rebuild: 8 -->
