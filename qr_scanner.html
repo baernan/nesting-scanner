@@ -80,7 +80,6 @@
       position: relative;
       width: 240px;
       height: 180px;
-      max-height: 180px;
       margin: 0 auto;
       flex-shrink: 0;
       background: #020617;
@@ -88,6 +87,7 @@
       overflow: hidden;
       border: 1px solid var(--border-glow);
       box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.7), 0 0 15px rgba(59, 130, 246, 0.15);
+      transition: height 0.3s ease;
     }
 
     #video {
@@ -98,6 +98,7 @@
       height: 100%;
       object-fit: cover;
       background: #000000;
+      z-index: 1;
     }
 
     #canvas {
@@ -106,6 +107,7 @@
       left: 0;
       width: 100%;
       height: 100%;
+      z-index: 2;
       pointer-events: none;
     }
 
@@ -553,6 +555,11 @@
     let lastScannedText = "";
     let lastScanTime = 0;
     let scanHistory = JSON.parse(localStorage.getItem('labelScanHistory') || '[]');
+    let sizeAdjusted = false;
+
+    // Create offscreen canvas for barcode data extraction (prevents UI lag/distortion)
+    const scanCanvas = document.createElement('canvas');
+    const scanCtx = scanCanvas.getContext('2d');
 
     // Render historical list
     function renderHistory() {
@@ -656,6 +663,7 @@
     }
 
     cameraSelect.onchange = () => {
+      sizeAdjusted = false;
       startCamera(cameraSelect.value);
     };
 
@@ -676,10 +684,32 @@
       drawLine(location.bottomLeftCorner, location.topLeftCorner, color);
     }
 
+    function adjustScannerSize() {
+      if (!video.videoWidth || !video.videoHeight) return;
+      const container = document.getElementById('scannerContainer');
+      const aspect = video.videoHeight / video.videoWidth; // height/width ratio
+      
+      // Calculate dynamic height for 240px wide layout
+      const targetHeight = Math.round(240 * aspect);
+      container.style.height = targetHeight + "px";
+      
+      // Scale resolution of overlay drawing canvas to match physical display box
+      canvas.width = 240;
+      canvas.height = targetHeight;
+      sizeAdjusted = true;
+    }
+
     // Main scan frame loop
     function tick() {
       if (video.readyState === video.HAVE_ENOUGH_DATA && isScanning) {
-        canvas.hidden = false;
+        if (!sizeAdjusted) {
+          adjustScannerSize();
+        }
+
+        // Clear the visible green overlay box
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Standardize downscaled dimensions for background CPU decoding
         let scanWidth = video.videoWidth;
         let scanHeight = video.videoHeight;
         const maxScanDim = 320;
@@ -689,18 +719,27 @@
           scanHeight = Math.round(scanHeight * ratio);
         }
         
-        canvas.width = scanWidth;
-        canvas.height = scanHeight;
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        scanCanvas.width = scanWidth;
+        scanCanvas.height = scanHeight;
+        scanCtx.drawImage(video, 0, 0, scanCanvas.width, scanCanvas.height);
         
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const imageData = scanCtx.getImageData(0, 0, scanCanvas.width, scanCanvas.height);
         const code = jsQR(imageData.data, imageData.width, imageData.height, {
           inversionAttempts: "dontInvert",
         });
 
         if (code) {
-          // Draw green tracking marker around detected QR code
-          drawRect(code.location, "#10b981");
+          // Scale offscreen scan coordinates back to physical layout overlay canvas
+          const scale = canvas.width / scanWidth;
+          const mappedLoc = {
+            topLeftCorner: { x: code.location.topLeftCorner.x * scale, y: code.location.topLeftCorner.y * scale },
+            topRightCorner: { x: code.location.topRightCorner.x * scale, y: code.location.topRightCorner.y * scale },
+            bottomRightCorner: { x: code.location.bottomRightCorner.x * scale, y: code.location.bottomRightCorner.y * scale },
+            bottomLeftCorner: { x: code.location.bottomLeftCorner.x * scale, y: code.location.bottomLeftCorner.y * scale }
+          };
+
+          // Draw active tracking marker
+          drawRect(mappedLoc, "#10b981");
           handleScanSuccess(code.data);
         }
       }
@@ -796,4 +835,4 @@
   </script>
 </body>
 </html>
-<!-- Trigger rebuild: 5 -->
+<!-- Trigger rebuild: 6 -->
