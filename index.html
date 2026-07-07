@@ -866,7 +866,11 @@
         return;
       }
 
-      // Check format: Job: ... \n File: ... \n Part: ... \n Sheet: ... \n Dimensions: ...
+      // Check format. Current label QR payload is the compact "S:<sheet> P:<part>" form
+      // (job/file/dimensions are already printed as plain text on the label itself, so
+      // they aren't re-encoded -- keeping the QR small enough to actually scan on a
+      // 0.5in-tall Avery 5167 label). Older labels may still carry the legacy verbose
+      // "Job: ... \n File: ... \n Part: ... \n Sheet: ... \n Dimensions: ..." format.
       const lines = rawText.split('\n');
       let job = "Unknown Job";
       let file = "Unknown File";
@@ -876,23 +880,30 @@
       let imperial = "---";
       let parsedCorrectly = false;
 
-      lines.forEach(line => {
-        if (line.startsWith("Job: ")) {
-          job = line.replace("Job: ", "").trim();
-        } else if (line.startsWith("File: ")) {
-          file = line.replace("File: ", "").trim();
-        } else if (line.startsWith("Part: ")) {
-          part = line.replace("Part: ", "").trim();
-          parsedCorrectly = true;
-        } else if (line.startsWith("Sheet: ")) {
-          sheet = line.replace("Sheet: ", "").trim();
-        } else if (line.startsWith("Dimensions: ") || line.startsWith("Dims: ") || line.startsWith("Dimensions: ")) {
-          const dims = line.replace("Dimensions: ", "").replace("Dims: ", "").trim();
-          const split = dims.split('|');
-          if (split[0]) metric = split[0].trim();
-          if (split[1]) imperial = split[1].trim();
-        }
-      });
+      const compactMatch = rawText.match(/^S:(.*?) P:(.*)$/);
+      if (compactMatch) {
+        sheet = compactMatch[1].trim();
+        part = compactMatch[2].trim();
+        parsedCorrectly = true;
+      } else {
+        lines.forEach(line => {
+          if (line.startsWith("Job: ")) {
+            job = line.replace("Job: ", "").trim();
+          } else if (line.startsWith("File: ")) {
+            file = line.replace("File: ", "").trim();
+          } else if (line.startsWith("Part: ")) {
+            part = line.replace("Part: ", "").trim();
+            parsedCorrectly = true;
+          } else if (line.startsWith("Sheet: ")) {
+            sheet = line.replace("Sheet: ", "").trim();
+          } else if (line.startsWith("Dimensions: ") || line.startsWith("Dims: ") || line.startsWith("Dimensions: ")) {
+            const dims = line.replace("Dimensions: ", "").replace("Dims: ", "").trim();
+            const split = dims.split('|');
+            if (split[0]) metric = split[0].trim();
+            if (split[1]) imperial = split[1].trim();
+          }
+        });
+      }
 
       // Ignore non-nesting QR codes completely (keeps the current valid scan active on screen)
       if (!parsedCorrectly) {
