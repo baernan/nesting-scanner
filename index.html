@@ -199,6 +199,55 @@
       100% { transform: scale(0.8); opacity: 0.5; }
     }
 
+    /* Zoom control below the viewport */
+    .zoom-control-row {
+      width: 240px;
+      margin: 0.6rem auto 0;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .zoom-icon {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      font-weight: 700;
+      width: 1rem;
+      text-align: center;
+      user-select: none;
+    }
+
+    .zoom-slider {
+      flex: 1;
+      -webkit-appearance: none;
+      appearance: none;
+      height: 4px;
+      border-radius: 2px;
+      background: rgba(255, 255, 255, 0.15);
+      outline: none;
+    }
+
+    .zoom-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 6px var(--accent-glow);
+      cursor: pointer;
+    }
+
+    .zoom-slider::-moz-range-thumb {
+      width: 16px;
+      height: 16px;
+      border: none;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 6px var(--accent-glow);
+      cursor: pointer;
+    }
+
     /* Scanned Info Panel */
     .card {
       background: var(--bg-panel);
@@ -464,6 +513,13 @@
       </div>
     </div>
 
+    <!-- Zoom control (shown only when the active camera supports it) -->
+    <div class="zoom-control-row" id="zoomControlRow" style="display: none;">
+      <span class="zoom-icon">−</span>
+      <input type="range" id="zoomSlider" class="zoom-slider" min="0" max="1" step="0.01" value="0">
+      <span class="zoom-icon">+</span>
+    </div>
+
     <!-- Scanned Part Card -->
     <div class="card" id="scanCard" style="opacity: 0.5; transform: scale(0.98);">
       <div class="card-header">
@@ -562,6 +618,8 @@
     const statusBox = document.getElementById('statusBox');
     const toggleScanBtn = document.getElementById('toggleScanBtn');
     const cameraSelect = document.getElementById('cameraSelect');
+    const zoomControlRow = document.getElementById('zoomControlRow');
+    const zoomSlider = document.getElementById('zoomSlider');
     let videoDevices = [];
     let currentDeviceIndex = 0;
     
@@ -645,6 +703,41 @@
       }
     };
 
+    // Apply continuous autofocus and expose a manual zoom slider when the
+    // active camera track supports them (mainly Chrome/Android; Safari has
+    // no support for either, so the slider just stays hidden there).
+    function setupCameraControls(track) {
+      zoomSlider.oninput = null;
+      zoomControlRow.style.display = 'none';
+
+      if (!track || typeof track.getCapabilities !== 'function') {
+        return;
+      }
+
+      const caps = track.getCapabilities();
+
+      if (caps.focusMode && caps.focusMode.includes('continuous')) {
+        track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(() => {});
+      }
+
+      if (!caps.zoom) {
+        return;
+      }
+
+      const settings = track.getSettings();
+      zoomSlider.min = caps.zoom.min;
+      zoomSlider.max = caps.zoom.max;
+      zoomSlider.step = caps.zoom.step || 0.1;
+      zoomSlider.value = settings.zoom || caps.zoom.min;
+      zoomControlRow.style.display = 'flex';
+
+      zoomSlider.oninput = () => {
+        track.applyConstraints({ advanced: [{ zoom: Number(zoomSlider.value) }] }).catch(err => {
+          console.error("Zoom apply failed", err);
+        });
+      };
+    }
+
     // Initialize camera stream
     async function startCamera(deviceId = null) {
       if (stream) {
@@ -654,7 +747,8 @@
       const constraints = {
         video: {
           deviceId: deviceId ? { exact: deviceId } : undefined,
-          facingMode: deviceId ? undefined : { ideal: "environment" }
+          facingMode: deviceId ? undefined : { ideal: "environment" },
+          focusMode: { ideal: "continuous" }
         }
       };
 
@@ -663,10 +757,12 @@
         video.srcObject = stream;
         video.setAttribute('playsinline', true); // Critical for iOS Safari
         video.play();
-        
+
         statusText.innerText = "Scanning Active...";
         statusBox.style.borderColor = "var(--border-glow)";
-        
+
+        setupCameraControls(stream.getVideoTracks()[0]);
+
         // List camera devices
         const devices = await navigator.mediaDevices.enumerateDevices();
         videoDevices = devices.filter(d => d.kind === 'videoinput');
@@ -702,6 +798,7 @@
         console.error("Camera access failed", err);
         statusText.innerText = "Camera Access Denied/Error";
         statusBox.style.borderColor = "#ef4444";
+        zoomControlRow.style.display = 'none';
       }
     }
 
